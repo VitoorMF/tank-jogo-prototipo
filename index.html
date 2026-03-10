@@ -1074,7 +1074,7 @@
                 <div class="muted" style="font-size:10px;margin-top:2px" id="hud-round">RODADA 1</div>
             </div>
             <div style="text-align:center">
-                <div class="timer" id="timer-display">30</div>
+                <div class="timer" id="timer-display">60</div>
                 <div class="timer-bar-bg">
                     <div class="timer-bar" id="timer-bar" style="width:100%"></div>
                 </div>
@@ -1240,7 +1240,7 @@
             round: 1, turnOrder: [], currentTurnIdx: 0,
             gameStarted: false, gameOver: false, winner: null,
             // local only
-            timerInterval: null, timerValue: 30,
+            timerInterval: null, timerValue: 60,
             currentStep: 0,
             shotTarget: null,   // which enemy color I'm targeting
             pendingShot: null,  // {color, x, y}
@@ -1697,7 +1697,7 @@
         // TIMER
         // ══════════════════════════════════════════════
         function startTimer() {
-            clearInterval(S.timerInterval); S.timerValue = 30; tickTimer();
+            clearInterval(S.timerInterval); S.timerValue = 60; tickTimer();
             S.timerInterval = setInterval(() => {
                 S.timerValue--; tickTimer();
                 if (S.timerValue <= 0) { clearInterval(S.timerInterval); showNotif('⏰ TEMPO ESGOTADO!', 'miss'); advanceTurn(); }
@@ -1706,7 +1706,7 @@
         function tickTimer() {
             const t = $('timer-display'), bar = $('timer-bar'); if (!t) return;
             t.textContent = S.timerValue; t.classList.toggle('urgent', S.timerValue <= 10);
-            bar.style.width = (S.timerValue / 30 * 100) + '%'; bar.classList.toggle('urgent', S.timerValue <= 10);
+            bar.style.width = (S.timerValue / 60 * 100) + '%'; bar.classList.toggle('urgent', S.timerValue <= 10);
         }
 
         // ══════════════════════════════════════════════
