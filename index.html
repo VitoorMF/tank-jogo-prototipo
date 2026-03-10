@@ -1,0 +1,1752 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>TANK BATTLE</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700;900&family=Orbitron:wght@400;700;900&display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --bg: #0a0c0f;
+            --bg2: #111418;
+            --bg3: #181d24;
+            --panel: #1a2030;
+            --border: #2a3545;
+            --accent: #f0a500;
+            --accent2: #ff4444;
+            --green: #39ff14;
+            --dim: #4a5568;
+            --text: #d0dce8;
+            --textdim: #6b7f94;
+            --yellow: #f5c842;
+            --red: #ff4455;
+            --blue: #44aaff;
+            --verde: #44ff88;
+            --grid-size: min(72vw, 72vh, 320px);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Barlow Condensed', sans-serif;
+            min-height: 100dvh;
+            overflow-x: hidden
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, .08) 2px, rgba(0, 0, 0, .08) 4px);
+            pointer-events: none;
+            z-index: 9999
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100dvh;
+            padding: 20px 16px
+        }
+
+        .screen.active {
+            display: flex
+        }
+
+        /* typography */
+        .logo {
+            font-family: 'Orbitron', monospace;
+            font-size: clamp(28px, 8vw, 48px);
+            font-weight: 900;
+            letter-spacing: 6px;
+            color: var(--accent);
+            text-shadow: 0 0 30px rgba(240, 165, 0, .5);
+            text-align: center;
+            line-height: 1
+        }
+
+        .logo-sub {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 4px;
+            color: var(--textdim);
+            text-align: center;
+            margin-top: 4px
+        }
+
+        .muted {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            color: var(--textdim);
+            letter-spacing: 2px;
+            text-align: center
+        }
+
+        .section-title {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: var(--textdim);
+            text-transform: uppercase;
+            width: 100%;
+            max-width: 320px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 6px;
+            margin-bottom: 10px
+        }
+
+        /* buttons */
+        .btn {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            border: 2px solid var(--accent);
+            background: transparent;
+            color: var(--accent);
+            padding: 14px 32px;
+            cursor: pointer;
+            width: 100%;
+            max-width: 320px;
+            transition: all .15s;
+            position: relative;
+            overflow: hidden
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--accent);
+            transform: translateX(-100%);
+            transition: transform .15s;
+            z-index: 0
+        }
+
+        .btn:active::before,
+        .btn:hover::before {
+            transform: translateX(0)
+        }
+
+        .btn span {
+            position: relative;
+            z-index: 1
+        }
+
+        .btn:active span,
+        .btn:hover span {
+            color: var(--bg)
+        }
+
+        .btn-danger {
+            border-color: var(--accent2);
+            color: var(--accent2)
+        }
+
+        .btn-danger::before {
+            background: var(--accent2)
+        }
+
+        .btn-ghost {
+            border-color: var(--border);
+            color: var(--textdim);
+            font-size: 14px
+        }
+
+        .btn-ghost::before {
+            background: var(--border)
+        }
+
+        .btn-ghost:active span,
+        .btn-ghost:hover span {
+            color: var(--text)
+        }
+
+        .btn:disabled {
+            opacity: .4;
+            cursor: not-allowed
+        }
+
+        .btn:disabled::before {
+            display: none
+        }
+
+        /* inputs */
+        .input-group {
+            width: 100%;
+            max-width: 320px
+        }
+
+        .input-label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: var(--textdim);
+            margin-bottom: 6px;
+            display: block
+        }
+
+        .input-field {
+            width: 100%;
+            background: var(--bg3);
+            border: 2px solid var(--border);
+            color: var(--text);
+            font-family: 'Orbitron', monospace;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 6px;
+            text-align: center;
+            text-transform: uppercase;
+            padding: 14px;
+            outline: none;
+            transition: border-color .2s
+        }
+
+        .input-field:focus {
+            border-color: var(--accent)
+        }
+
+        /* color picker */
+        .color-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            width: 100%;
+            max-width: 320px
+        }
+
+        .color-btn {
+            padding: 16px 8px;
+            border: 2px solid transparent;
+            background: var(--bg3);
+            cursor: pointer;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: all .15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px
+        }
+
+        .color-btn.selected {
+            transform: scale(1.04)
+        }
+
+        .color-btn[data-color=yellow] {
+            color: var(--yellow);
+            border-color: var(--yellow)
+        }
+
+        .color-btn[data-color=red] {
+            color: var(--red);
+            border-color: var(--red)
+        }
+
+        .color-btn[data-color=blue] {
+            color: var(--blue);
+            border-color: var(--blue)
+        }
+
+        .color-btn[data-color=verde] {
+            color: var(--verde);
+            border-color: var(--verde)
+        }
+
+        .color-btn[data-color=yellow].selected {
+            background: rgba(245, 200, 66, .15)
+        }
+
+        .color-btn[data-color=red].selected {
+            background: rgba(255, 68, 85, .15)
+        }
+
+        .color-btn[data-color=blue].selected {
+            background: rgba(68, 170, 255, .15)
+        }
+
+        .color-btn[data-color=verde].selected {
+            background: rgba(68, 255, 136, .15)
+        }
+
+        .color-btn.taken {
+            opacity: .35;
+            cursor: not-allowed;
+            pointer-events: none
+        }
+
+        /* ── TARGET PICKER (new) ── */
+        .target-picker {
+            width: 100%;
+            max-width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px
+        }
+
+        .target-header {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: var(--textdim);
+            text-align: center;
+            margin-bottom: 4px
+        }
+
+        /* row of enemy target buttons */
+        .enemy-btns {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+            justify-content: center;
+            flex-wrap: wrap
+        }
+
+        .enemy-btn {
+            flex: 1;
+            min-width: 70px;
+            padding: 12px 6px;
+            border: 2px solid;
+            background: var(--bg3);
+            cursor: pointer;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: all .18s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            position: relative;
+            overflow: hidden
+        }
+
+        .enemy-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transition: opacity .18s
+        }
+
+        .enemy-btn:active::before,
+        .enemy-btn.sel::before {
+            opacity: .15
+        }
+
+        .enemy-btn[data-t=yellow] {
+            color: var(--yellow);
+            border-color: var(--yellow)
+        }
+
+        .enemy-btn[data-t=yellow]::before {
+            background: var(--yellow)
+        }
+
+        .enemy-btn[data-t=red] {
+            color: var(--red);
+            border-color: var(--red)
+        }
+
+        .enemy-btn[data-t=red]::before {
+            background: var(--red)
+        }
+
+        .enemy-btn[data-t=blue] {
+            color: var(--blue);
+            border-color: var(--blue)
+        }
+
+        .enemy-btn[data-t=blue]::before {
+            background: var(--blue)
+        }
+
+        .enemy-btn[data-t=verde] {
+            color: var(--verde);
+            border-color: var(--verde)
+        }
+
+        .enemy-btn[data-t=verde]::before {
+            background: var(--verde)
+        }
+
+        .enemy-btn.sel {
+            transform: scale(1.05)
+        }
+
+        .enemy-btn.elim {
+            opacity: .25;
+            cursor: not-allowed;
+            pointer-events: none;
+            text-decoration: line-through
+        }
+
+        /* target grid container — tinted to chosen color */
+        .target-grid-wrap {
+            width: 100%;
+            max-width: 320px;
+            padding: 12px;
+            border: 2px solid;
+            border-radius: 0;
+            transition: border-color .2s, background .2s
+        }
+
+        .target-grid-label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+            text-align: center;
+            font-weight: 700;
+            text-transform: uppercase
+        }
+
+        .tg-inner {
+            display: grid;
+            grid-template-columns: 20px repeat(4, 1fr);
+            gap: 2px
+        }
+
+        .tg-col-labels {
+            display: grid;
+            grid-template-columns: 20px repeat(4, 1fr);
+            margin-bottom: 2px
+        }
+
+        .tg-col-lbl {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            color: var(--textdim);
+            text-align: center
+        }
+
+        .tg-row-lbl {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            color: var(--textdim);
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+        .tcell {
+            aspect-ratio: 1;
+            border: 1px solid;
+            background: var(--bg3);
+            cursor: pointer;
+            position: relative;
+            transition: all .12s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(14px, 4vw, 20px)
+        }
+
+        .tcell:active {
+            transform: scale(.88)
+        }
+
+        .tcell.dest {
+            cursor: not-allowed;
+            opacity: .3
+        }
+
+        .tcell.dest::after {
+            content: '✕';
+            font-size: 12px;
+            font-family: 'Share Tech Mono', monospace;
+            position: absolute
+        }
+
+        .tcell.hovered {
+            filter: brightness(1.6)
+        }
+
+        /* own grid */
+        .grid-wrap {
+            position: relative;
+            width: var(--grid-size);
+            margin: 0 auto
+        }
+
+        .grid-labels-top {
+            display: grid;
+            grid-template-columns: 24px repeat(4, 1fr);
+            margin-bottom: 2px
+        }
+
+        .grid-labels-col {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            color: var(--textdim);
+            text-align: center
+        }
+
+        .grid-main {
+            display: grid;
+            grid-template-columns: 24px repeat(4, 1fr);
+            gap: 2px
+        }
+
+        .grid-label-row {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            color: var(--textdim);
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+        .cell {
+            aspect-ratio: 1;
+            border: 1px solid var(--border);
+            background: var(--bg3);
+            cursor: default;
+            position: relative;
+            transition: all .15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(18px, 5vw, 26px)
+        }
+
+        .cell.tank {
+            background: var(--bg2)
+        }
+
+        .cell.tank::after {
+            content: '🪖';
+            position: absolute;
+            animation: tankBob 2s ease-in-out infinite
+        }
+
+        @keyframes tankBob {
+
+            0%,
+            100% {
+                transform: translateY(0)
+            }
+
+            50% {
+                transform: translateY(-2px)
+            }
+        }
+
+        .cell.destroyed {
+            background: var(--bg);
+            border-color: #1a1a1a
+        }
+
+        .cell.destroyed::after {
+            content: '✕';
+            color: #2a2a2a;
+            font-size: 14px;
+            font-family: 'Share Tech Mono', monospace
+        }
+
+        .cell.movable {
+            cursor: pointer;
+            background: rgba(57, 255, 20, .08);
+            border-color: var(--green)
+        }
+
+        .cell.movable:active {
+            transform: scale(.9)
+        }
+
+        /* hud */
+        .hud {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-bottom: 2px solid var(--accent);
+            margin-bottom: 10px
+        }
+
+        .hud-player {
+            font-family: 'Orbitron', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 2px
+        }
+
+        .timer {
+            font-family: 'Orbitron', monospace;
+            font-size: 40px;
+            font-weight: 900;
+            color: var(--accent);
+            line-height: 1;
+            text-shadow: 0 0 20px rgba(240, 165, 0, .4);
+            transition: color .3s
+        }
+
+        .timer.urgent {
+            color: var(--accent2);
+            animation: pulse .5s infinite
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: .6
+            }
+        }
+
+        .timer-bar-bg {
+            width: 100%;
+            height: 4px;
+            background: var(--bg3);
+            margin-top: 4px
+        }
+
+        .timer-bar {
+            height: 100%;
+            background: var(--accent);
+            transition: width 1s linear, background .3s
+        }
+
+        .timer-bar.urgent {
+            background: var(--accent2)
+        }
+
+        .hud-lives {
+            display: flex;
+            gap: 3px;
+            font-size: 16px
+        }
+
+        .shield-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 8px;
+            border: 1px solid var(--border);
+            background: var(--bg3);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--textdim);
+            margin-top: 3px
+        }
+
+        .shield-badge.active {
+            border-color: #44aaff;
+            color: #44aaff;
+            background: rgba(68, 170, 255, .08)
+        }
+
+        /* steps */
+        .steps {
+            width: 100%;
+            display: flex;
+            gap: 6px;
+            margin-bottom: 10px
+        }
+
+        .step {
+            flex: 1;
+            padding: 6px 4px;
+            border: 1px solid var(--border);
+            text-align: center;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 1px;
+            color: var(--textdim);
+            background: var(--bg3);
+            transition: all .2s
+        }
+
+        .step.active {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(240, 165, 0, .08)
+        }
+
+        .step.done {
+            border-color: var(--green);
+            color: var(--green);
+            background: rgba(57, 255, 20, .05)
+        }
+
+        .step-num {
+            font-size: 16px;
+            font-weight: 700;
+            font-family: 'Orbitron', monospace;
+            display: block;
+            margin-bottom: 2px
+        }
+
+        /* turn badge */
+        .turn-badge {
+            width: 100%;
+            padding: 10px 16px;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-left: 4px solid;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 10px
+        }
+
+        /* notif */
+        .notif {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 16px;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-align: center;
+            z-index: 9998;
+            transform: translateY(-100%);
+            transition: transform .3s
+        }
+
+        .notif.show {
+            transform: translateY(0)
+        }
+
+        .notif.hit {
+            background: rgba(255, 44, 44, .95);
+            color: #fff;
+            border-bottom: 2px solid red
+        }
+
+        .notif.miss {
+            background: rgba(26, 32, 48, .97);
+            color: var(--textdim);
+            border-bottom: 2px solid var(--border)
+        }
+
+        .notif.info {
+            background: rgba(240, 165, 0, .93);
+            color: var(--bg);
+            border-bottom: 2px solid var(--accent)
+        }
+
+        /* waiting */
+        .waiting-pulse {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            animation: wPulse 2s ease-in-out infinite;
+            position: relative
+        }
+
+        .waiting-pulse::before {
+            content: '';
+            position: absolute;
+            inset: -12px;
+            border-radius: 50%;
+            border: 1px solid rgba(240, 165, 0, .3);
+            animation: wPulse 2s ease-in-out infinite reverse
+        }
+
+        @keyframes wPulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1
+            }
+
+            50% {
+                transform: scale(1.08);
+                opacity: .7
+            }
+        }
+
+        /* lobby */
+        .room-code {
+            font-family: 'Orbitron', monospace;
+            font-size: 36px;
+            font-weight: 900;
+            letter-spacing: 10px;
+            color: var(--accent);
+            text-shadow: 0 0 20px rgba(240, 165, 0, .4);
+            text-align: center;
+            padding: 16px;
+            border: 2px solid var(--accent);
+            background: var(--bg3);
+            width: 100%;
+            max-width: 320px
+        }
+
+        .players-list {
+            width: 100%;
+            max-width: 320px
+        }
+
+        .player-slot {
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            background: var(--bg3);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            color: var(--textdim);
+            transition: all .3s
+        }
+
+        .player-slot.filled {
+            color: var(--text)
+        }
+
+        .player-slot .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--dim);
+            flex-shrink: 0
+        }
+
+        .player-slot.filled .dot {
+            animation: dotPulse 1.5s ease-in-out infinite
+        }
+
+        @keyframes dotPulse {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: .4
+            }
+        }
+
+        /* end */
+        .winner-banner {
+            font-family: 'Orbitron', monospace;
+            font-size: clamp(20px, 7vw, 32px);
+            font-weight: 900;
+            text-align: center;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            padding: 20px;
+            border: 2px solid;
+            width: 100%;
+            max-width: 320px;
+            margin-bottom: 16px;
+            white-space: pre-line
+        }
+
+        .stat-row {
+            width: 100%;
+            max-width: 320px;
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 13px
+        }
+
+        .stat-val {
+            color: var(--accent);
+            font-weight: 700
+        }
+
+        /* overlay */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .88);
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            gap: 14px
+        }
+
+        .overlay.show {
+            display: flex
+        }
+
+        .overlay-box {
+            width: 100%;
+            max-width: 340px;
+            background: var(--bg2);
+            border: 2px solid var(--accent);
+            padding: 22px 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px
+        }
+
+        .overlay-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            color: var(--accent);
+            text-align: center
+        }
+
+        /* conn */
+        #conn-status {
+            position: fixed;
+            bottom: 8px;
+            right: 12px;
+            z-index: 9997;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            color: var(--textdim);
+            letter-spacing: 2px
+        }
+
+        .conn-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent2)
+        }
+
+        .conn-dot.online {
+            background: var(--green);
+            animation: dotPulse 1.5s infinite
+        }
+
+        /* util */
+        .gap-s {
+            height: 8px
+        }
+
+        .gap-m {
+            height: 16px
+        }
+
+        .gap-l {
+            height: 24px
+        }
+
+        .gap-xl {
+            height: 36px
+        }
+
+        .w-full {
+            width: 100%;
+            max-width: 320px
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="notif" id="notif"></div>
+    <div id="conn-status">
+        <div class="conn-dot" id="conn-dot"></div><span id="conn-text">OFFLINE</span>
+    </div>
+
+    <!-- ═══ HOME ═══ -->
+    <div class="screen active" id="screen-home">
+        <div class="gap-xl"></div>
+        <div class="logo">TANK<br>BATTLE</div>
+        <div class="logo-sub">HYBRID BOARD GAME</div>
+        <div class="gap-xl"></div>
+        <button class="btn" onclick="goTo('screen-create')"><span>CRIAR SALA</span></button>
+        <div class="gap-s"></div>
+        <button class="btn btn-ghost" onclick="goTo('screen-join')"><span>ENTRAR NA SALA</span></button>
+        <div class="gap-l"></div>
+        <div class="muted">v1.1 — PROTÓTIPO</div>
+    </div>
+
+    <!-- ═══ CREATE ═══ -->
+    <div class="screen" id="screen-create">
+        <div class="gap-l"></div>
+        <div class="logo" style="font-size:24px">CRIAR SALA</div>
+        <div class="gap-l"></div>
+        <div class="section-title">ESCOLHA SUA COR</div>
+        <div class="color-grid">
+            <button class="color-btn" data-color="yellow"
+                onclick="selectColor('yellow')"><span>🟡</span>AMARELO</button>
+            <button class="color-btn" data-color="red" onclick="selectColor('red')"><span>🔴</span>VERMELHO</button>
+            <button class="color-btn" data-color="blue" onclick="selectColor('blue')"><span>🔵</span>AZUL</button>
+            <button class="color-btn" data-color="verde" onclick="selectColor('verde')"><span>🟢</span>VERDE</button>
+        </div>
+        <div class="gap-m"></div>
+        <button class="btn" id="btn-create" onclick="createRoom()"><span>CRIAR SALA</span></button>
+        <div class="gap-s"></div>
+        <button class="btn btn-ghost" onclick="goTo('screen-home')"><span>VOLTAR</span></button>
+    </div>
+
+    <!-- ═══ JOIN ═══ -->
+    <div class="screen" id="screen-join">
+        <div class="gap-l"></div>
+        <div class="logo" style="font-size:24px">ENTRAR NA SALA</div>
+        <div class="gap-l"></div>
+        <div class="section-title">ESCOLHA SUA COR</div>
+        <div class="color-grid" id="join-color-grid">
+            <button class="color-btn" data-color="yellow"
+                onclick="selectColor('yellow')"><span>🟡</span>AMARELO</button>
+            <button class="color-btn" data-color="red" onclick="selectColor('red')"><span>🔴</span>VERMELHO</button>
+            <button class="color-btn" data-color="blue" onclick="selectColor('blue')"><span>🔵</span>AZUL</button>
+            <button class="color-btn" data-color="verde" onclick="selectColor('verde')"><span>🟢</span>VERDE</button>
+        </div>
+        <div class="gap-m"></div>
+        <div class="input-group">
+            <span class="input-label">CÓDIGO DA SALA</span>
+            <input class="input-field" id="join-code" maxlength="6" placeholder="ABC123"
+                oninput="this.value=this.value.toUpperCase()" />
+        </div>
+        <div class="gap-m"></div>
+        <button class="btn" id="btn-join" onclick="joinRoom()"><span>ENTRAR</span></button>
+        <div class="gap-s"></div>
+        <button class="btn btn-ghost" onclick="goTo('screen-home')"><span>VOLTAR</span></button>
+    </div>
+
+    <!-- ═══ LOBBY ═══ -->
+    <div class="screen" id="screen-lobby">
+        <div class="gap-m"></div>
+        <div class="logo" style="font-size:20px">AGUARDANDO JOGADORES</div>
+        <div class="gap-m"></div>
+        <div class="section-title">CÓDIGO DA SALA</div>
+        <div class="room-code" id="lobby-code">------</div>
+        <div class="gap-s"></div>
+        <div class="muted" style="font-size:10px">Compartilhe este código com os outros jogadores</div>
+        <div class="gap-m"></div>
+        <div class="section-title">JOGADORES</div>
+        <div class="players-list" id="players-list"></div>
+        <div class="gap-m"></div>
+        <button class="btn" id="start-btn" onclick="startGame()" style="display:none"><span>▶ INICIAR
+                PARTIDA</span></button>
+        <div class="muted" id="lobby-status">Aguardando jogadores...</div>
+        <div class="gap-m"></div>
+        <button class="btn btn-ghost" onclick="leaveRoom()"><span>SAIR DA SALA</span></button>
+    </div>
+
+    <!-- ═══ GAME ═══ -->
+    <div class="screen" id="screen-game">
+        <!-- HUD -->
+        <div class="hud">
+            <div>
+                <div class="hud-player" id="hud-player">—</div>
+                <div class="muted" style="font-size:10px;margin-top:2px" id="hud-round">RODADA 1</div>
+            </div>
+            <div style="text-align:center">
+                <div class="timer" id="timer-display">30</div>
+                <div class="timer-bar-bg">
+                    <div class="timer-bar" id="timer-bar" style="width:100%"></div>
+                </div>
+            </div>
+            <div style="text-align:right">
+                <div class="hud-lives" id="hud-lives">❤️❤️❤️</div>
+                <div class="shield-badge" id="shield-badge">🛡 SEM CARTA</div>
+            </div>
+        </div>
+
+        <!-- TURN BADGE -->
+        <div class="turn-badge" id="turn-badge">AGUARDANDO...</div>
+
+        <!-- STEPS -->
+        <div class="steps">
+            <div class="step" id="step-1"><span class="step-num">1</span>ALVO</div>
+            <div class="step" id="step-2"><span class="step-num">2</span>ATIRAR</div>
+            <div class="step" id="step-3"><span class="step-num">3</span>POSIC.</div>
+            <div class="step" id="step-4"><span class="step-num">4</span>MOVER</div>
+        </div>
+
+        <!-- DYNAMIC CONTENT AREA -->
+        <div id="step-content" style="width:100%;max-width:320px"></div>
+
+        <!-- OWN GRID (always visible below) -->
+        <div class="section-title" id="own-grid-label" style="margin-top:10px">SUA ARENA</div>
+        <div class="grid-wrap">
+            <div class="grid-labels-top">
+                <div></div>
+                <div class="grid-labels-col">A</div>
+                <div class="grid-labels-col">B</div>
+                <div class="grid-labels-col">C</div>
+                <div class="grid-labels-col">D</div>
+            </div>
+            <div class="grid-main" id="own-grid"></div>
+        </div>
+
+        <div class="gap-s"></div>
+        <button class="btn btn-ghost" id="next-btn" style="display:none" onclick="handleNextBtn()">
+            <span id="next-label">PRÓXIMO →</span>
+        </button>
+        <div class="gap-m"></div>
+    </div>
+
+    <!-- ═══ WAITING ═══ -->
+    <div class="screen" id="screen-waiting">
+        <div class="gap-xl"></div>
+        <div class="waiting-pulse">⏳</div>
+        <div class="gap-l"></div>
+        <div class="logo" style="font-size:20px" id="waiting-msg">VEZ DO ADVERSÁRIO</div>
+        <div class="gap-s"></div>
+        <div class="muted" id="waiting-sub">Aguarde sua vez...</div>
+        <div class="gap-l"></div>
+        <div id="waiting-lives" style="font-size:22px;display:flex;gap:5px;justify-content:center"></div>
+        <div class="gap-l"></div>
+        <div class="section-title" style="text-align:center">SUA POSIÇÃO</div>
+        <div class="grid-wrap" style="--grid-size:min(55vw,220px)">
+            <div class="grid-labels-top">
+                <div></div>
+                <div class="grid-labels-col">A</div>
+                <div class="grid-labels-col">B</div>
+                <div class="grid-labels-col">C</div>
+                <div class="grid-labels-col">D</div>
+            </div>
+            <div class="grid-main" id="waiting-grid"></div>
+        </div>
+    </div>
+
+    <!-- ═══ END ═══ -->
+    <div class="screen" id="screen-end">
+        <div class="gap-l"></div>
+        <div class="logo" style="font-size:20px">FIM DE PARTIDA</div>
+        <div class="gap-m"></div>
+        <div class="winner-banner" id="winner-banner">🏆 VENCEDOR</div>
+        <div class="gap-s"></div>
+        <div class="w-full">
+            <div class="stat-row"><span>RODADAS</span><span class="stat-val" id="stat-rounds">0</span></div>
+            <div class="stat-row"><span>TIROS DADOS</span><span class="stat-val" id="stat-shots">0</span></div>
+            <div class="stat-row"><span>CÉLULAS DESTRUÍDAS</span><span class="stat-val" id="stat-destroyed">0</span>
+            </div>
+            <div class="stat-row"><span>SUAS VIDAS RESTANTES</span><span class="stat-val" id="stat-lives">0</span></div>
+        </div>
+        <div class="gap-l"></div>
+        <button class="btn" onclick="location.reload()"><span>NOVA PARTIDA</span></button>
+    </div>
+
+    <!-- ═══ OVERLAY: confirm shot ═══ -->
+    <div class="overlay" id="overlay-shot">
+        <div class="overlay-box">
+            <div class="overlay-title">CONFIRMAR TIRO</div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--textdim);letter-spacing:2px">
+                ALVO</div>
+            <div id="overlay-target-name"
+                style="font-family:'Orbitron',monospace;font-size:18px;font-weight:700;letter-spacing:3px">—</div>
+            <div id="overlay-coord"
+                style="font-family:'Orbitron',monospace;font-size:32px;font-weight:900;color:var(--accent2);letter-spacing:6px">
+                --</div>
+            <div class="muted">Declare em voz alta para todos!</div>
+            <button class="btn btn-danger" onclick="confirmShot()"><span>🎯 ATIRAR!</span></button>
+            <button class="btn btn-ghost" onclick="cancelShot()"><span>CANCELAR</span></button>
+        </div>
+    </div>
+
+    <!-- ═══ OVERLAY: hit ═══ -->
+    <div class="overlay" id="overlay-hit">
+        <div class="overlay-box" style="border-color:var(--accent2)">
+            <div style="font-size:52px;animation:pulse .8s infinite">💥</div>
+            <div class="overlay-title" style="color:var(--accent2);font-size:20px">VOCÊ FOI ATINGIDO!</div>
+            <div id="hit-lives" style="font-size:28px;letter-spacing:4px;margin:4px 0"></div>
+            <div class="muted" style="font-size:12px;line-height:1.7;text-align:center">SÓ VOCÊ VIU ISSO.<br>VOCÊ PODE
+                BLEFAR!</div>
+            <button class="btn" onclick="dismissHit()"><span>ENTENDI</span></button>
+        </div>
+    </div>
+
+    <!-- ═══ OVERLAY: eliminated ═══ -->
+    <div class="overlay" id="overlay-elim">
+        <div class="overlay-box" style="border-color:var(--accent2)">
+            <div style="font-size:52px">💀</div>
+            <div class="overlay-title" style="color:var(--accent2);font-size:18px">TANQUE DESTRUÍDO!</div>
+            <div class="muted" style="text-align:center;line-height:1.8">Você foi eliminado.<br>Mostre seu app para
+                todos.</div>
+            <button class="btn btn-danger" onclick="confirmElimination()"><span>CONFIRMAR ELIMINAÇÃO</span></button>
+        </div>
+    </div>
+
+    <script>
+        // ══════════════════════════════════════════════
+        // SUPABASE
+        // ══════════════════════════════════════════════
+        const SUPABASE_URL = 'https://zhvdctvgqkjbpjsaaulh.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_GcFNH7hQwUO7sbkgvxtRXA_d0En137Y';
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let channel = null;
+
+        // ══════════════════════════════════════════════
+        // CONSTANTS
+        // ══════════════════════════════════════════════
+        const NAMES = { yellow: 'AMARELO', red: 'VERMELHO', blue: 'AZUL', verde: 'VERDE' };
+        const CVARS = { yellow: 'var(--yellow)', red: 'var(--red)', blue: 'var(--blue)', verde: 'var(--verde)' };
+        const CHEX = { yellow: '#f5c842', red: '#ff4455', blue: '#44aaff', verde: '#44ff88' };
+        const EMOJI = { yellow: '🟡', red: '🔴', blue: '🔵', verde: '🟢' };
+        const COLS = ['', 'A', 'B', 'C', 'D'];
+
+        // ══════════════════════════════════════════════
+        // STATE
+        // ══════════════════════════════════════════════
+        const mkPlayers = () => ({
+            yellow: { lives: 3, pos: { x: 1, y: 1 }, active: false, hasShield: false, eliminated: false },
+            red: { lives: 3, pos: { x: 4, y: 1 }, active: false, hasShield: false, eliminated: false },
+            blue: { lives: 3, pos: { x: 4, y: 4 }, active: false, hasShield: false, eliminated: false },
+            verde: { lives: 3, pos: { x: 1, y: 4 }, active: false, hasShield: false, eliminated: false },
+        });
+
+        // destroyed is per-player zone: { yellow:[], red:[], blue:[], verde:[] }
+        const mkDestroyed = () => ({ yellow: [], red: [], blue: [], verde: [] });
+
+        const S = {
+            myColor: null, roomCode: null, isHost: false,
+            // shared (synced via Supabase)
+            players: mkPlayers(),
+            destroyed: mkDestroyed(),
+            round: 1, turnOrder: [], currentTurnIdx: 0,
+            gameStarted: false, gameOver: false, winner: null,
+            // local only
+            timerInterval: null, timerValue: 30,
+            currentStep: 0,
+            shotTarget: null,   // which enemy color I'm targeting
+            pendingShot: null,  // {color, x, y}
+            myShots: 0,
+            _prevLives: 3, _wasElim: false,
+        };
+
+        // ══════════════════════════════════════════════
+        // UTILS
+        // ══════════════════════════════════════════════
+        const $ = id => document.getElementById(id);
+        const hearts = n => '❤️'.repeat(Math.max(0, n)) + '🖤'.repeat(Math.max(0, 3 - n));
+        function goTo(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            $(id).classList.add('active'); window.scrollTo(0, 0);
+        }
+        function setConn(on) {
+            $('conn-dot').className = 'conn-dot' + (on ? ' online' : '');
+            $('conn-text').textContent = on ? 'ONLINE' : 'OFFLINE';
+        }
+        function showNotif(msg, type = 'info') {
+            const e = $('notif'); e.textContent = msg; e.className = `notif ${type} show`;
+            setTimeout(() => e.classList.remove('show'), 2600);
+        }
+        function coordLabel(x, y) { return COLS[x] + y; }
+
+        // ══════════════════════════════════════════════
+        // SUPABASE SYNC
+        // ══════════════════════════════════════════════
+        function shared() {
+            return {
+                players: S.players, destroyed: S.destroyed, round: S.round,
+                turnOrder: S.turnOrder, currentTurnIdx: S.currentTurnIdx,
+                gameStarted: S.gameStarted, gameOver: S.gameOver, winner: S.winner
+            };
+        }
+        function apply(st) {
+            S.players = st.players; S.destroyed = st.destroyed || mkDestroyed();
+            S.round = st.round || 1; S.turnOrder = st.turnOrder || [];
+            S.currentTurnIdx = st.currentTurnIdx || 0;
+            S.gameStarted = st.gameStarted || false;
+            S.gameOver = st.gameOver || false;
+            S.winner = st.winner || null;
+        }
+        async function push() {
+            const { error } = await db.from('rooms').update({ state: shared() }).eq('code', S.roomCode);
+            if (error) console.error('push error', error);
+        }
+        function subscribe() {
+            if (channel) db.removeChannel(channel);
+            channel = db.channel('room:' + S.roomCode)
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `code=eq.${S.roomCode}` },
+                    p => { apply(p.new.state); react(); })
+                .subscribe(s => setConn(s === 'SUBSCRIBED'));
+        }
+
+        // ══════════════════════════════════════════════
+        // REACT TO STATE CHANGE
+        // ══════════════════════════════════════════════
+        function react() {
+            if (S.gameOver) { clearInterval(S.timerInterval); showEnd(S.winner); return; }
+            if (!S.gameStarted) { renderLobby(); return; }
+
+            const myP = S.players[S.myColor];
+
+            if (myP.eliminated && !S._wasElim) {
+                S._wasElim = true;
+                $('overlay-elim').classList.add('show'); return;
+            }
+            if (myP.lives < S._prevLives && !myP.eliminated) {
+                $('hit-lives').textContent = hearts(myP.lives);
+                $('overlay-hit').classList.add('show');
+            }
+            S._prevLives = myP.lives;
+
+            updateHUD();
+            const cp = currentPlayer();
+            if (cp === S.myColor) {
+                // Only start my turn if not already mid-flow
+                if (S.currentStep === 0) startMyTurn();
+                // else: mid-turn push (after confirmShot etc), ignore
+            } else {
+                showWaiting(cp);
+            }
+        }
+
+        // ══════════════════════════════════════════════
+        // COLOR SELECT
+        // ══════════════════════════════════════════════
+        function selectColor(c) {
+            S.myColor = c;
+            document.querySelectorAll('.color-btn').forEach(b => {
+                if (!b.classList.contains('taken'))
+                    b.classList.toggle('selected', b.dataset.color === c);
+            });
+        }
+        function markTaken(players) {
+            const g = $('join-color-grid');
+            if (!g) return;
+            g.querySelectorAll('.color-btn').forEach(b => {
+                const c = b.dataset.color;
+                if (players[c]?.active && c !== S.myColor) { b.classList.add('taken'); b.classList.remove('selected'); }
+            });
+        }
+
+        // ══════════════════════════════════════════════
+        // ROOM: CREATE / JOIN / LEAVE
+        // ══════════════════════════════════════════════
+        async function createRoom() {
+            if (!S.myColor) { showNotif('Escolha uma cor!', 'miss'); return; }
+            const btn = $('btn-create'); btn.disabled = true; btn.querySelector('span').textContent = 'CRIANDO...';
+            S.roomCode = Math.random().toString(36).substr(2, 6).toUpperCase();
+            S.isHost = true; S.players = mkPlayers(); S.destroyed = mkDestroyed();
+            S.players[S.myColor].active = true;
+            const { error } = await db.from('rooms').insert({ code: S.roomCode, state: shared() });
+            btn.disabled = false; btn.querySelector('span').textContent = 'CRIAR SALA';
+            if (error) { showNotif('Erro ao criar sala!', 'miss'); console.error(error); return; }
+            subscribe(); renderLobby(); goTo('screen-lobby');
+            showNotif('SALA CRIADA! 🎮', 'info');
+        }
+        async function joinRoom() {
+            if (!S.myColor) { showNotif('Escolha uma cor!', 'miss'); return; }
+            const code = $('join-code').value.trim().toUpperCase();
+            if (code.length < 4) { showNotif('Código inválido!', 'miss'); return; }
+            const btn = $('btn-join'); btn.disabled = true; btn.querySelector('span').textContent = 'ENTRANDO...';
+            const { data, error } = await db.from('rooms').select('*').eq('code', code).single();
+            btn.disabled = false; btn.querySelector('span').textContent = 'ENTRAR';
+            if (error || !data) { showNotif('SALA NÃO ENCONTRADA!', 'miss'); return; }
+            apply(data.state);
+            if (S.players[S.myColor].active) { showNotif('COR JÁ OCUPADA!', 'miss'); markTaken(S.players); S.myColor = null; return; }
+            S.roomCode = code; S.isHost = false;
+            S.players[S.myColor].active = true; S._prevLives = 3;
+            await push(); subscribe(); renderLobby(); goTo('screen-lobby');
+            showNotif('ENTROU NA SALA! ✅', 'info');
+        }
+        async function leaveRoom() {
+            if (channel) db.removeChannel(channel);
+            if (S.myColor) { S.players[S.myColor].active = false; await push(); }
+            location.reload();
+        }
+
+        // ══════════════════════════════════════════════
+        // LOBBY
+        // ══════════════════════════════════════════════
+        function renderLobby() {
+            $('lobby-code').textContent = S.roomCode;
+            const list = $('players-list'); list.innerHTML = '';
+            let count = 0;
+            ['yellow', 'red', 'blue', 'verde'].forEach(c => {
+                const f = S.players[c].active; if (f) count++;
+                const d = document.createElement('div');
+                d.className = 'player-slot' + (f ? ' filled' : '');
+                d.style.cssText = `border-left:4px solid ${f ? CVARS[c] : 'transparent'}`;
+                d.innerHTML = `<div class="dot" style="${f ? `background:${CVARS[c]}` : ''}"></div>
+      <span>${EMOJI[c]} ${NAMES[c]}</span>
+      <span style="margin-left:auto;font-size:12px;color:var(--textdim)">${f ? (c === S.myColor ? 'VOCÊ' : 'CONECTADO') : 'AGUARDANDO'}</span>`;
+                list.appendChild(d);
+            });
+            const sb = $('start-btn'), st = $('lobby-status');
+            if (count >= 2 && S.isHost) { sb.style.display = ''; st.textContent = `${count} jogadores prontos`; }
+            else if (!S.isHost) { sb.style.display = 'none'; st.textContent = `${count}/4 • Aguardando host iniciar`; }
+            else { sb.style.display = 'none'; st.textContent = `${count}/4 • Aguardando mais jogadores`; }
+        }
+
+        // ══════════════════════════════════════════════
+        // START GAME
+        // ══════════════════════════════════════════════
+        async function startGame() {
+            S.turnOrder = ['yellow', 'red', 'blue', 'verde'].filter(c => S.players[c].active);
+            S.currentTurnIdx = 0; S.gameStarted = true; S.round = 1;
+            S.turnOrder.forEach(c => S.players[c].hasShield = true);
+            await push();
+        }
+
+        // ══════════════════════════════════════════════
+        // TURN
+        // ══════════════════════════════════════════════
+        function currentPlayer() {
+            if (!S.turnOrder.length) return null;
+            return S.turnOrder[S.currentTurnIdx % S.turnOrder.length];
+        }
+
+        function startMyTurn() {
+            S.currentStep = 1; S._prevLives = S.players[S.myColor].lives;
+            S.shotTarget = null; S.pendingShot = null;
+            goTo('screen-game');
+            updateHUD(); startTimer();
+            setTurnBadge('⚔️  SUA VEZ', CVARS[S.myColor]);
+            updateSteps(1); renderStep1(); renderOwnGrid();
+            $('next-btn').style.display = 'none';
+        }
+
+        function showWaiting(cp) {
+            goTo('screen-waiting');
+            $('waiting-msg').textContent = `VEZ DO ${NAMES[cp] || '?'}`;
+            $('waiting-msg').style.color = CVARS[cp] || 'var(--accent)';
+            $('waiting-sub').textContent = `Rodada ${S.round} · Aguarde...`;
+            $('waiting-lives').textContent = hearts(S.players[S.myColor].lives);
+            renderWaitingGrid(); clearInterval(S.timerInterval);
+        }
+
+        async function advanceTurn() {
+            clearInterval(S.timerInterval);
+            S.currentStep = 0; // signal turn ended before push
+            S.currentTurnIdx++;
+            if (S.currentTurnIdx % S.turnOrder.length === 0) {
+                S.round++;
+                S.turnOrder.forEach(c => { if (!S.players[c].eliminated) S.players[c].hasShield = true; });
+            }
+            const alive = S.turnOrder.filter(c => !S.players[c].eliminated);
+            if (alive.length <= 1) { S.gameOver = true; S.winner = alive[0] || null; }
+            await push();
+        }
+
+        // ══════════════════════════════════════════════
+        // STEPS UI
+        // ══════════════════════════════════════════════
+        function updateSteps(active) {
+            [1, 2, 3, 4].forEach(i => {
+                const e = $(`step-${i}`); e.className = 'step';
+                if (i < active) e.classList.add('done');
+                else if (i === active) e.classList.add('active');
+            });
+        }
+        function setTurnBadge(msg, color) {
+            const e = $('turn-badge'); e.textContent = msg;
+            e.style.borderLeftColor = color; e.style.color = color;
+        }
+        function handleNextBtn() {
+            if (S.currentStep === 3) proceedToStep4();
+            else advanceTurn();
+        }
+
+        // ── STEP 1: Choose enemy color ────────────────
+        function renderStep1() {
+            const enemies = S.turnOrder.filter(c => c !== S.myColor && !S.players[c].eliminated);
+            const html = `
+    <div class="target-picker">
+      <div class="target-header">ESCOLHA O ALVO</div>
+      <div class="enemy-btns" id="enemy-btns">
+        ${['yellow', 'red', 'blue', 'verde'].map(c => {
+                const isMe = c === S.myColor;
+                const isElim = S.players[c].eliminated;
+                const isInactive = !S.players[c].active;
+                const disabled = isMe || isElim || isInactive;
+                return `<button class="enemy-btn${disabled ? ' elim' : ''}" data-t="${c}"
+            onclick="${disabled ? '' : 'selectTarget(\'' + c + '\')'}"
+            style="${disabled ? 'display:none' : ''}">
+            <span>${EMOJI[c]}</span>${NAMES[c]}
+          </button>`;
+            }).join('')}
+      </div>
+    </div>`;
+            $('step-content').innerHTML = html;
+            $('next-btn').style.display = 'none';
+        }
+
+        function selectTarget(color) {
+            S.shotTarget = color;
+            // highlight selected
+            document.querySelectorAll('.enemy-btn').forEach(b => {
+                b.classList.toggle('sel', b.dataset.t === color);
+            });
+            // proceed to step 2 (show target grid)
+            setTimeout(() => { S.currentStep = 2; updateSteps(2); renderStep2(); }, 200);
+        }
+
+        // ── STEP 2: Fire on enemy grid ────────────────
+        function renderStep2() {
+            const tc = S.shotTarget;
+            const hex = CHEX[tc];
+            const destroyedInZone = S.destroyed[tc] || [];
+
+            let gridRows = '';
+            for (let row = 1; row <= 4; row++) {
+                gridRows += `<div class="tg-row-lbl">${row}</div>`;
+                for (let col = 1; col <= 4; col++) {
+                    const isDest = destroyedInZone.some(d => d.x === col && d.y === row);
+                    gridRows += `<div class="tcell${isDest ? ' dest' : ''}"
+        style="border-color:${hex}22;background:${isDest ? 'rgba(0,0,0,.5)' : `${hex}0d`}"
+        ${isDest ? '' : `onclick="selectShotCell(${col},${row})"`}
+      >${isDest ? '' : ''}`;
+                    gridRows += `</div>`;
+                }
+            }
+
+            const html = `
+    <div class="target-grid-wrap" style="border-color:${hex};background:${hex}08">
+      <div class="target-grid-label" style="color:${hex}">${EMOJI[tc]} ZONA ${NAMES[tc]}</div>
+      <div class="tg-col-labels">
+        <div></div>
+        <div class="tg-col-lbl" style="color:${hex}">A</div>
+        <div class="tg-col-lbl" style="color:${hex}">B</div>
+        <div class="tg-col-lbl" style="color:${hex}">C</div>
+        <div class="tg-col-lbl" style="color:${hex}">D</div>
+      </div>
+      <div class="tg-inner" id="target-grid-inner">${gridRows}</div>
+    </div>
+    <div class="gap-s"></div>
+    <button class="btn btn-ghost" style="font-size:13px" onclick="backToStep1()">
+      <span>← TROCAR ALVO</span>
+    </button>`;
+            $('step-content').innerHTML = html;
+            $('next-btn').style.display = 'none';
+        }
+
+        function backToStep1() {
+            S.shotTarget = null; S.currentStep = 1;
+            updateSteps(1); renderStep1();
+        }
+
+        function selectShotCell(x, y) {
+            S.pendingShot = { color: S.shotTarget, x, y };
+            // show confirm overlay
+            $('overlay-target-name').textContent = `${EMOJI[S.shotTarget]} ${NAMES[S.shotTarget]}`;
+            $('overlay-target-name').style.color = CVARS[S.shotTarget];
+            $('overlay-coord').textContent = coordLabel(x, y);
+            $('overlay-shot').classList.add('show');
+        }
+
+        async function confirmShot() {
+            $('overlay-shot').classList.remove('show');
+            const { color, x, y } = S.pendingShot;
+            S.myShots++;
+
+            // Check hit
+            const targetPos = S.players[color].pos;
+            if (targetPos.x === x && targetPos.y === y) applyHit(color);
+
+            // Destroy cell in that zone
+            if (!(S.destroyed[color] || []).some(d => d.x === x && d.y === y)) {
+                if (!S.destroyed[color]) S.destroyed[color] = [];
+                S.destroyed[color].push({ x, y });
+            }
+
+            await push();
+
+            // Proceed to step 3
+            S.currentStep = 3; updateSteps(3); renderStep3();
+        }
+
+        function cancelShot() {
+            $('overlay-shot').classList.remove('show');
+            S.pendingShot = null;
+        }
+
+        function applyHit(c) {
+            const p = S.players[c];
+            if (p.hasShield) { p.hasShield = false; showNotif(`🛡 ESCUDO BLOQUEOU ${NAMES[c]}!`, 'info'); return; }
+            p.lives--;
+            if (p.lives <= 0) {
+                p.lives = 0; p.eliminated = true;
+                S.turnOrder = S.turnOrder.filter(x => x !== c);
+                showNotif(`💀 ${NAMES[c]} ELIMINADO!`, 'info');
+            }
+        }
+
+        // ── STEP 3: Position physical target ───────────
+        function renderStep3() {
+            const { color, x, y } = S.pendingShot;
+            $('step-content').innerHTML = `
+    <div style="background:var(--bg3);border:1px solid ${CVARS[color]};padding:14px;margin-bottom:8px">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--textdim);margin-bottom:6px;letter-spacing:2px">PASSO 3 — POSICIONE O ALVO</div>
+      <div style="font-size:17px;font-weight:700;letter-spacing:2px">📍 MOVA SEU TANQUE FÍSICO</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--textdim);margin-top:8px;line-height:1.8">
+        Coloque o alvo de disparo no tabuleiro em:<br>
+        <span style="font-family:'Orbitron',monospace;font-size:18px;color:${CVARS[color]};letter-spacing:4px">${NAMES[color]} · ${coordLabel(x, y)}</span><br>
+        <span style="font-size:10px">(onde você acabou de atirar)</span>
+      </div>
+    </div>`;
+            $('next-btn').style.display = '';
+            $('next-label').textContent = 'POSICIONEI → MOVER';
+        }
+
+        // ── STEP 4: Move own tank ─────────────────────
+        function proceedToStep4() {
+            S.currentStep = 4; updateSteps(4);
+            $('step-content').innerHTML = `<div class="muted" style="margin-bottom:8px">TOQUE PARA ONDE MOVER SEU TANQUE</div>`;
+            $('next-btn').style.display = 'none';
+            renderOwnGrid('move');
+        }
+
+        async function moveMyTank(x, y) {
+            S.players[S.myColor].pos = { x, y };
+            renderOwnGrid();
+            updateHUD();
+            $('step-content').innerHTML = `
+    <div style="background:rgba(57,255,20,.06);border:1px solid var(--green);padding:12px 14px;margin-bottom:8px;text-align:center">
+      <div style="color:var(--green);font-family:'Orbitron',monospace;font-size:14px;letter-spacing:3px">✓ TURNO CONCLUÍDO</div>
+    </div>`;
+            clearInterval(S.timerInterval);
+            $('next-btn').style.display = '';
+            $('next-label').textContent = 'FINALIZAR TURNO →';
+            $('next-btn').onclick = advanceTurn;
+        }
+
+        // ══════════════════════════════════════════════
+        // GRIDS
+        // ══════════════════════════════════════════════
+        function renderOwnGrid(mode = 'view') {
+            const g = $('own-grid'); g.innerHTML = '';
+            const myDest = S.destroyed[S.myColor] || [];
+            const myPos = S.players[S.myColor].pos;
+            for (let row = 1; row <= 4; row++) {
+                const lbl = document.createElement('div'); lbl.className = 'grid-label-row'; lbl.textContent = row; g.appendChild(lbl);
+                for (let col = 1; col <= 4; col++) {
+                    const c = document.createElement('div'); c.className = 'cell';
+                    const isDest = myDest.some(d => d.x === col && d.y === row);
+                    const isMe = myPos.x === col && myPos.y === row;
+                    if (isDest) { c.classList.add('destroyed'); }
+                    else if (isMe) { c.classList.add('tank'); c.style.borderColor = CVARS[S.myColor]; }
+                    if (mode === 'move' && !isDest) {
+                        const dx = Math.abs(col - myPos.x), dy = Math.abs(row - myPos.y);
+                        if (dx <= 1 && dy <= 1 && !(dx === 0 && dy === 0)) {
+                            c.classList.add('movable'); c.onclick = () => moveMyTank(col, row);
+                        }
+                    }
+                    g.appendChild(c);
+                }
+            }
+        }
+
+        function renderWaitingGrid() {
+            const g = $('waiting-grid'); g.innerHTML = '';
+            const myDest = S.destroyed[S.myColor] || [];
+            const myPos = S.players[S.myColor].pos;
+            for (let row = 1; row <= 4; row++) {
+                const lbl = document.createElement('div'); lbl.className = 'grid-label-row'; lbl.textContent = row; g.appendChild(lbl);
+                for (let col = 1; col <= 4; col++) {
+                    const c = document.createElement('div'); c.className = 'cell';
+                    const isDest = myDest.some(d => d.x === col && d.y === row);
+                    if (isDest) c.classList.add('destroyed');
+                    else if (myPos.x === col && myPos.y === row) { c.classList.add('tank'); c.style.borderColor = CVARS[S.myColor]; }
+                    g.appendChild(c);
+                }
+            }
+        }
+
+        // ══════════════════════════════════════════════
+        // HUD
+        // ══════════════════════════════════════════════
+        function updateHUD() {
+            const p = S.players[S.myColor];
+            $('hud-player').textContent = NAMES[S.myColor]; $('hud-player').style.color = CVARS[S.myColor];
+            $('hud-round').textContent = `RODADA ${S.round}`;
+            $('hud-lives').textContent = hearts(p.lives);
+            $('waiting-lives').textContent = hearts(p.lives);
+            const sb = $('shield-badge');
+            if (p.hasShield) { sb.textContent = '🛡 ESCUDO ATIVO'; sb.className = 'shield-badge active'; }
+            else { sb.textContent = '🛡 SEM CARTA'; sb.className = 'shield-badge'; }
+        }
+
+        // ══════════════════════════════════════════════
+        // TIMER
+        // ══════════════════════════════════════════════
+        function startTimer() {
+            clearInterval(S.timerInterval); S.timerValue = 30; tickTimer();
+            S.timerInterval = setInterval(() => {
+                S.timerValue--; tickTimer();
+                if (S.timerValue <= 0) { clearInterval(S.timerInterval); showNotif('⏰ TEMPO ESGOTADO!', 'miss'); advanceTurn(); }
+            }, 1000);
+        }
+        function tickTimer() {
+            const t = $('timer-display'), bar = $('timer-bar'); if (!t) return;
+            t.textContent = S.timerValue; t.classList.toggle('urgent', S.timerValue <= 10);
+            bar.style.width = (S.timerValue / 30 * 100) + '%'; bar.classList.toggle('urgent', S.timerValue <= 10);
+        }
+
+        // ══════════════════════════════════════════════
+        // HIT OVERLAYS
+        // ══════════════════════════════════════════════
+        function dismissHit() { $('overlay-hit').classList.remove('show'); updateHUD(); }
+        async function confirmElimination() {
+            $('overlay-elim').classList.remove('show');
+            S.players[S.myColor].eliminated = true; S.players[S.myColor].lives = 0;
+            S.turnOrder = S.turnOrder.filter(c => c !== S.myColor);
+            const alive = S.turnOrder.filter(c => !S.players[c].eliminated);
+            if (alive.length <= 1) { S.gameOver = true; S.winner = alive[0] || null; }
+            await push();
+        }
+
+        // ══════════════════════════════════════════════
+        // END
+        // ══════════════════════════════════════════════
+        function showEnd(winner) {
+            clearInterval(S.timerInterval);
+            const wb = $('winner-banner'); const isMe = winner === S.myColor;
+            wb.textContent = winner ? `${EMOJI[winner]} ${NAMES[winner]}\n${isMe ? 'VOCÊ VENCEU! 🏆' : 'VENCEU!'}` : 'EMPATE';
+            if (winner) wb.style.borderColor = CVARS[winner];
+            $('stat-rounds').textContent = S.round;
+            $('stat-shots').textContent = S.myShots;
+            const totalDest = Object.values(S.destroyed).reduce((a, b) => a + b.length, 0);
+            $('stat-destroyed').textContent = totalDest;
+            $('stat-lives').textContent = S.players[S.myColor].lives;
+            goTo('screen-end');
+        }
+
+        // ══════════════════════════════════════════════
+        // INIT
+        // ══════════════════════════════════════════════
+        (async () => {
+            const { error } = await db.from('rooms').select('id').limit(1);
+            setConn(!error);
+            if (error) showNotif('⚠ Rode o SQL no Supabase primeiro', 'miss');
+        })();
+    </script>
+</body>
+
+</html>
