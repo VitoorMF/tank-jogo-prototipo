@@ -1374,11 +1374,12 @@
             if (S.players[S.myColor].active) { showNotif('COR JÁ OCUPADA!', 'miss'); markTaken(S.players); S.myColor = null; return; }
             S.roomCode = code; S.isHost = false;
             S.players[S.myColor].active = true; S._prevLives = 3;
+            saveSession(); // save before push so session exists if page reloads during push
             await push(); subscribe(); renderLobby(); goTo('screen-lobby');
-            saveSession();
             showNotif('ENTROU NA SALA! ✅', 'info');
         }
         async function leaveRoom() {
+            S._intentionalLeave = true;
             clearSession();
             if (channel) db.removeChannel(channel);
             if (S.myColor) { S.players[S.myColor].active = false; await push(); }
@@ -1745,17 +1746,17 @@
         // SESSION PERSISTENCE
         // ══════════════════════════════════════════════
         function saveSession() {
-            sessionStorage.setItem('tb_session', JSON.stringify({
+            localStorage.setItem('tb_session', JSON.stringify({
                 myColor: S.myColor,
                 roomCode: S.roomCode,
                 isHost: S.isHost
             }));
         }
         function clearSession() {
-            sessionStorage.removeItem('tb_session');
+            localStorage.removeItem('tb_session');
         }
         function loadSession() {
-            try { return JSON.parse(sessionStorage.getItem('tb_session')); }
+            try { return JSON.parse(localStorage.getItem('tb_session')); }
             catch (e) { return null; }
         }
 
@@ -1775,8 +1776,24 @@
 
             apply(data.state);
 
-            // Check if my color is still active in that room
-            if (!S.players[sess.myColor]?.active) { clearSession(); return; }
+            // If game is over, clear session
+            if (S.gameOver) { clearSession(); return; }
+
+            // Re-activate the player (they may have been marked inactive on accidental reload)
+            // Only reject if the color was never in this game (never active and game already started)
+            const wasEverActive = data.state.players[sess.myColor]?.active ||
+                (data.state.turnOrder || []).includes(sess.myColor);
+            if (!wasEverActive) { clearSession(); return; }
+
+            // Re-mark as active in case they got deactivated
+            S.players[sess.myColor].active = true;
+            // Push reactivation to Supabase so others see them back
+            await db.from('rooms').update({
+                state: {
+                    ...data.state,
+                    players: { ...data.state.players, [sess.myColor]: { ...data.state.players[sess.myColor], active: true } }
+                }
+            }).eq('code', sess.roomCode);
 
             S.myColor = sess.myColor;
             S.roomCode = sess.roomCode;
@@ -1796,6 +1813,14 @@
                 goTo('screen-lobby');
             }
         })();
+
+        // Warn Supabase realtime to stay connected on page hide (mobile background)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && S.roomCode && !S._intentionalLeave) {
+                // Re-subscribe if channel dropped while in background
+                if (channel && channel.state !== 'joined') subscribe();
+            }
+        });
     </script>
 </body>
 
