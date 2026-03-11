@@ -1074,7 +1074,7 @@
                 <div class="muted" style="font-size:10px;margin-top:2px" id="hud-round">RODADA 1</div>
             </div>
             <div style="text-align:center">
-                <div class="timer" id="timer-display">60</div>
+                <div class="timer" id="timer-display">30</div>
                 <div class="timer-bar-bg">
                     <div class="timer-bar" id="timer-bar" style="width:100%"></div>
                 </div>
@@ -1240,7 +1240,7 @@
             round: 1, turnOrder: [], currentTurnIdx: 0,
             gameStarted: false, gameOver: false, winner: null,
             // local only
-            timerInterval: null, timerValue: 60,
+            timerInterval: null, timerValue: 30,
             currentStep: 0,
             shotTarget: null,   // which enemy color I'm targeting
             pendingShot: null,  // {color, x, y}
@@ -1359,6 +1359,7 @@
             btn.disabled = false; btn.querySelector('span').textContent = 'CRIAR SALA';
             if (error) { showNotif('Erro ao criar sala!', 'miss'); console.error(error); return; }
             subscribe(); renderLobby(); goTo('screen-lobby');
+            saveSession();
             showNotif('SALA CRIADA! 🎮', 'info');
         }
         async function joinRoom() {
@@ -1374,9 +1375,11 @@
             S.roomCode = code; S.isHost = false;
             S.players[S.myColor].active = true; S._prevLives = 3;
             await push(); subscribe(); renderLobby(); goTo('screen-lobby');
+            saveSession();
             showNotif('ENTROU NA SALA! ✅', 'info');
         }
         async function leaveRoom() {
+            clearSession();
             if (channel) db.removeChannel(channel);
             if (S.myColor) { S.players[S.myColor].active = false; await push(); }
             location.reload();
@@ -1598,15 +1601,15 @@
             }
         }
 
-        // ── STEP 3: Position physical target ───────────
+        // ── STEP 3: Position physical tank ───────────
         function renderStep3() {
             const { color, x, y } = S.pendingShot;
             $('step-content').innerHTML = `
     <div style="background:var(--bg3);border:1px solid ${CVARS[color]};padding:14px;margin-bottom:8px">
-      <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--textdim);margin-bottom:6px;letter-spacing:2px">PASSO 3 — POSICIONE O ALVO E TANQUE</div>
-      <div style="font-size:17px;font-weight:700;letter-spacing:2px">📍 POSICIONE SEU TANQUE FÍSICO ONDE MOSTRA NA SUA TELA</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--textdim);margin-bottom:6px;letter-spacing:2px">PASSO 3 — POSICIONE A PEÇA</div>
+      <div style="font-size:17px;font-weight:700;letter-spacing:2px">📍 MOVA SEU TANQUE FÍSICO</div>
       <div style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--textdim);margin-top:8px;line-height:1.8">
-        Coloque o alvo de disparo no tabuleiro em:<br>
+        Coloque sua peça no tabuleiro em:<br>
         <span style="font-family:'Orbitron',monospace;font-size:18px;color:${CVARS[color]};letter-spacing:4px">${NAMES[color]} · ${coordLabel(x, y)}</span><br>
         <span style="font-size:10px">(onde você acabou de atirar)</span>
       </div>
@@ -1697,7 +1700,7 @@
         // TIMER
         // ══════════════════════════════════════════════
         function startTimer() {
-            clearInterval(S.timerInterval); S.timerValue = 60; tickTimer();
+            clearInterval(S.timerInterval); S.timerValue = 30; tickTimer();
             S.timerInterval = setInterval(() => {
                 S.timerValue--; tickTimer();
                 if (S.timerValue <= 0) { clearInterval(S.timerInterval); showNotif('⏰ TEMPO ESGOTADO!', 'miss'); advanceTurn(); }
@@ -1706,7 +1709,7 @@
         function tickTimer() {
             const t = $('timer-display'), bar = $('timer-bar'); if (!t) return;
             t.textContent = S.timerValue; t.classList.toggle('urgent', S.timerValue <= 10);
-            bar.style.width = (S.timerValue / 60 * 100) + '%'; bar.classList.toggle('urgent', S.timerValue <= 10);
+            bar.style.width = (S.timerValue / 30 * 100) + '%'; bar.classList.toggle('urgent', S.timerValue <= 10);
         }
 
         // ══════════════════════════════════════════════
@@ -1739,12 +1742,59 @@
         }
 
         // ══════════════════════════════════════════════
+        // SESSION PERSISTENCE
+        // ══════════════════════════════════════════════
+        function saveSession() {
+            sessionStorage.setItem('tb_session', JSON.stringify({
+                myColor: S.myColor,
+                roomCode: S.roomCode,
+                isHost: S.isHost
+            }));
+        }
+        function clearSession() {
+            sessionStorage.removeItem('tb_session');
+        }
+        function loadSession() {
+            try { return JSON.parse(sessionStorage.getItem('tb_session')); }
+            catch (e) { return null; }
+        }
+
         // INIT
         // ══════════════════════════════════════════════
         (async () => {
             const { error } = await db.from('rooms').select('id').limit(1);
             setConn(!error);
-            if (error) showNotif('⚠ Rode o SQL no Supabase primeiro', 'miss');
+            if (error) { showNotif('⚠ Rode o SQL no Supabase primeiro', 'miss'); return; }
+
+            // Try to reconnect from session
+            const sess = loadSession();
+            if (!sess) return;
+
+            const { data, err2 } = await db.from('rooms').select('*').eq('code', sess.roomCode).single();
+            if (err2 || !data) { clearSession(); return; }
+
+            apply(data.state);
+
+            // Check if my color is still active in that room
+            if (!S.players[sess.myColor]?.active) { clearSession(); return; }
+
+            S.myColor = sess.myColor;
+            S.roomCode = sess.roomCode;
+            S.isHost = sess.isHost;
+            S._prevLives = S.players[sess.myColor].lives;
+
+            subscribe();
+            showNotif('RECONECTADO! ✅', 'info');
+
+            // Route to correct screen
+            if (S.gameStarted) {
+                const cp = currentPlayer();
+                if (cp === S.myColor) { S.currentStep = 0; startMyTurn(); }
+                else showWaiting(cp);
+            } else {
+                renderLobby();
+                goTo('screen-lobby');
+            }
         })();
     </script>
 </body>
